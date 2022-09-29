@@ -40,9 +40,9 @@ class DEA(object):
         self.output_ = range(self.r)
 
         # result arrays
-        self.output_w = np.zeros((self.r, 1), dtype=np.float)  # output weights
-        self.input_w = np.zeros((self.m, 1), dtype=np.float)  # input weights
-        self.lambdas = np.zeros((self.n, 1), dtype=np.float)  # unit efficiencies
+        self.output_w = np.zeros((self.r, 1), dtype=float)  # output weights
+        self.input_w = np.zeros((self.m, 1), dtype=float)  # input weights
+        self.lambdas = np.zeros((self.n, 1), dtype=float)  # unit efficiencies
         self.efficiency = np.zeros_like(self.lambdas)  # thetas
 
         # names
