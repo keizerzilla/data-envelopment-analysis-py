@@ -1,2 +1,5 @@
-numpy>=1.11.0
-scipy>=0.16.1
+numpy
+scipy
+pandas
+matplotlib
+seaborn
