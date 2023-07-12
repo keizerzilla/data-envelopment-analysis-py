@@ -1,17 +1,27 @@
 import numpy as np
 import pandas as pd
-
 from scipy.optimize import fmin_slsqp
 
-class DEA(object):
+def csv_to_data(file_path, input_columns, output_columns, name_column):
+    """ Loads data from a CSV file to be used into a DEA model.
+    """
     
-    def __init__(self, inputs, outputs):
+    df = pd.read_csv(file_path)
+    
+    X = np.array(df[input_columns])
+    y = np.array(df[output_columns])
+    names = list(df[name_column])
+    
+    return X, y, names
+
+class DEA:
+    
+    def __init__(self, inputs, outputs, names):
         """
         Initialize the DEA object with input data.
-        
-        n = number of entities (observations)
-        m = number of inputs (variables, features)
-        r = number of outputs
+            n = number of entities (observations)
+            m = number of inputs (variables, features)
+            r = number of outputs
         
         :param inputs: inputs, n x m numpy array
         :param outputs: outputs, n x r numpy array
@@ -33,13 +43,21 @@ class DEA(object):
         self.output_ = range(self.r)
         
         # result arrays
-        self.output_w = np.zeros((self.r, 1), dtype=float)  # output weights
-        self.input_w = np.zeros((self.m, 1), dtype=float)  # input weights
-        self.lambdas = np.zeros((self.n, 1), dtype=float)  # unit efficiencies
-        self.efficiency = np.zeros_like(self.lambdas)  # thetas
+        
+        # output weights
+        self.output_w = np.zeros((self.r, 1), dtype=float)
+        
+        # input weights
+        self.input_w = np.zeros((self.m, 1), dtype=float)
+        
+        # unit efficiencies
+        self.lambdas = np.zeros((self.n, 1), dtype=float)
+        
+        # thetas
+        self.efficiency = np.zeros_like(self.lambdas)
         
         # names
-        self.names = []
+        self.names = names
     
     def __efficiency(self, unit):
         """
@@ -48,13 +66,13 @@ class DEA(object):
         :param unit: which unit to compute for
         :return: efficiency
         """
-
+        
         # compute efficiency
         denominator = np.dot(self.inputs, self.input_w)
         numerator = np.dot(self.outputs, self.output_w)
-
+        
         return (numerator / denominator)[unit]
-
+    
     def __target(self, x, unit):
         """
         Theta target function for one unit.
@@ -64,13 +82,14 @@ class DEA(object):
         :return: theta
         """
         
-        in_w, out_w, lambdas = x[:self.m], x[self.m:(self.m+self.r)], x[(self.m+self.r):]  # unroll the weights
+        # unroll the weights
+        in_w, out_w, lambdas = x[:self.m], x[self.m:(self.m + self.r)], x[(self.m + self.r):]
         
         denominator = np.dot(self.inputs[unit], in_w)
         numerator = np.dot(self.outputs[unit], out_w)
-    
+        
         return numerator / denominator
-
+    
     def __constraints(self, x, unit):
         """
         Constraints for optimization for one unit.
@@ -80,14 +99,17 @@ class DEA(object):
         :return: array of constraints
         """
         
-        in_w, out_w, lambdas = x[:self.m], x[self.m:(self.m+self.r)], x[(self.m+self.r):]  # unroll the weights
-        constr = []  # init the constraint array
+        # unroll the weights
+        in_w, out_w, lambdas = x[:self.m], x[self.m:(self.m + self.r)], x[(self.m + self.r):]
+        
+        # init the constraint array
+        constr = []
         
         # for each input, lambdas with inputs
         for input in self.input_:
             t = self.__target(x, unit)
             lhs = np.dot(self.inputs[:, input], lambdas)
-            cons = t*self.inputs[unit, input] - lhs
+            cons = t * self.inputs[unit, input] - lhs
             constr.append(cons)
         
         # for each output, lambdas with outputs
@@ -105,7 +127,6 @@ class DEA(object):
     def __optimize(self):
         """
         Optimization of the DEA model.
-        Use: http://docs.scipy.org/doc/scipy-0.17.0/reference/generated/scipy.optimize.linprog.html
         
         A = coefficients in the constraints
         b = rhs of constraints
@@ -114,6 +135,7 @@ class DEA(object):
         """
         
         d0 = self.m + self.r + self.n
+        
         # iterate over units
         for unit in self.unit_:
             # weights
@@ -123,18 +145,6 @@ class DEA(object):
             # unroll weights
             self.input_w, self.output_w, self.lambdas = x0[:self.m], x0[self.m:(self.m+self.r)], x0[(self.m+self.r):]
             self.efficiency[unit] = self.__efficiency(unit)
-    
-    def name_units(self, names):
-        """
-        Provide names for units for presentation purposes.
-        
-        :param names: a list of names, equal in length to the number of units
-        :return: nothing
-        """
-        
-        assert(self.n == len(names))
-        
-        self.names = names
     
     def fit(self):
         """
@@ -163,34 +173,19 @@ class DEA(object):
             print("\n")
         
         print("---------------------------\n")
+    
+    def plot(self):
+        """
+        """
+        
+        pass
 
 if __name__ == "__main__":
-    X = np.array([
-        [20., 300.],
-        [30., 200.],
-        [40., 100.],
-        [20., 200.],
-        [10., 400.]
-    ])
+    X, y, names = csv_to_data("data/original_metjush_sample.csv", ["input1", "input2"], ["output1"], "unit")
     
-    y = np.array([
-        [1000.],
-        [1000.],
-        [1000.],
-        [1000.],
-        [1000.]
-    ])
+    dea = DEA(X, y, names)
     
-    names = [
-        "Bratislava",
-        "Zilina",
-        "Kosice",
-        "Presov",
-        "Poprad"
-    ]
-    
-    dea = DEA(X, y)
-    dea.name_units(names)
     dea.fit()
     dea.summary()
+    dea.plot()
     
